@@ -1,0 +1,596 @@
+version: 4
+data:
+  attachedData:
+    trivet:
+      testSuites:
+        - id: WIxThVI8uT3qoO3TVKWm5
+          testCases: []
+          testGraph: kwQq90leAScP5WN6B4mfP
+          validationGraph: kwQq90leAScP5WN6B4mfP
+      version: 1
+  graphs:
+    kwQq90leAScP5WN6B4mfP:
+      metadata:
+        description: ""
+        id: kwQq90leAScP5WN6B4mfP
+        name: tfl-tube-chatbot
+      nodes:
+        '[-AY0ZkhThi8TSAKBF8gBH]:code "Non ambiguation URL"':
+          data:
+            allowConsole: false
+            allowFetch: false
+            allowProcess: false
+            allowRequire: false
+            allowRivet: false
+            body: ""
+            code: >-
+              const data = inputs.json.value;
+
+
+              // safer check
+
+              const hasTo = data && data.toLocationDisambiguation && data.toLocationDisambiguation.disambiguationOptions;
+
+              const hasFrom = data && data.fromLocationDisambiguation && data.fromLocationDisambiguation.disambiguationOptions;
+
+
+              if (hasTo || hasFrom) {
+
+                const toOption = data.toLocationDisambiguation?.disambiguationOptions?.[0];
+                const fromOption = data.fromLocationDisambiguation?.disambiguationOptions?.[0];
+
+                const toParam = toOption?.parameterValue;
+                const fromParam = fromOption?.parameterValue;
+
+                if (toParam && fromParam) {
+                  return {
+                    output1: {
+                      type: "string",
+                      value: `https://api.tfl.gov.uk/Journey/JourneyResults/${fromParam}/to/${toParam}?mode=tube`
+                    }
+                  };
+                }
+              }
+
+
+              return {
+                output1: {
+                  type: "string",
+                  value: "NO_FIX"
+                }
+              };
+            inputNames:
+              - json
+            outputNames: output1
+          outgoingConnections:
+            - output1->"Http Call (Non ambiguation Journey)"
+              jUUdPEAn8d8eBdHC3FnMA/url
+          visualData: 1193.8313160503599/-21.527666237453445/359.19296556959785/209//
+        '[08-SZoCCps83l3h9fQSx3]:code "Arrival Response"':
+          data:
+            allowConsole: false
+            allowFetch: false
+            allowProcess: false
+            allowRequire: false
+            allowRivet: false
+            body: ""
+            code: |-
+              const data = inputs.json.value;
+
+              if (!data || data.length === 0) {
+                return {
+                  output1: {
+                    type: "string",
+                    value: "No upcoming trains."
+                  }
+                };
+              }
+
+              // sort by arrival time
+              data.sort((a, b) => a.timeToStation - b.timeToStation);
+
+              // top 3 trains
+              const result = data.slice(0, 3).map(train => {
+                const line = train.lineName;
+                const destination = train.destinationName;
+                const time = Math.round(train.timeToStation / 60);
+
+                return `${line} → ${destination} in ${time} min`;
+              }).join("\n");
+
+              return {
+                output1: {
+                  type: "string",
+                  value: result
+                }
+              };
+            inputNames:
+              - json
+            outputNames: output1
+          visualData: 2158.857866525435/-502.57904923226226/418.2488556778544/206//
+        '[45Ajmk7Z24ohfTjK62A_D]:code "journey Response"':
+          data:
+            allowConsole: false
+            allowFetch: false
+            allowProcess: false
+            allowRequire: false
+            allowRivet: false
+            body: ""
+            code: >-
+              const data = inputs.json.value;
+
+
+              const journeys = data.journeys;
+
+
+              if (!journeys || journeys.length === 0) {
+                return {
+                  output1: {
+                    type: "string",
+                    value: "No journey found."
+                  }
+                };
+              }
+
+
+              // first journey
+
+              const j = journeys[0];
+
+
+              // only tube legs
+
+              const tubeLegs = j.legs.filter(l => l.mode.name === "tube");
+
+
+              if (tubeLegs.length === 0) {
+                return {
+                  output1: {
+                    type: "string",
+                    value: "No tube route available."
+                  }
+                };
+              }
+
+
+              // sum duration
+
+              const tubeDuration = tubeLegs.reduce((sum, leg) => sum + leg.duration, 0);
+
+
+              return {
+                output1: {
+                  type: "string",
+                  value: `Tube travel time: ${tubeDuration} min`
+                }
+              };
+            headers: ""
+            inputNames:
+              - json
+            outputNames: output1
+          visualData: 2152.5925231751244/-28.71098489749994/432.3589734367288/211//
+        '[8njTpBxHjXizMzLIhs3GI]:code "Arrival StopPoint ID URL"':
+          data:
+            allowConsole: false
+            allowFetch: false
+            allowProcess: false
+            allowRequire: false
+            allowRivet: false
+            body: ""
+            code: >-
+              const text = String(inputs.arrivals.value || "").toLowerCase();
+
+
+              // extract "from <station>"
+
+              const match = text.match(/from (.*)/);
+
+              const station = match ? match[1].trim() : "";
+
+
+              // build URL
+
+              return {
+                station: {
+                  type: "string",
+                  value: station
+                    ? `https://api.tfl.gov.uk/StopPoint/Search/${encodeURIComponent(station)}`
+                    : ""
+                }
+              };
+            inputNames:
+              - arrivals
+            outputNames:
+              - station
+          outgoingConnections:
+            - station->"Http Call StopPoint ID" _G-sqV6KfrEDN0oVBOQx7/url
+          visualData: 44.30431466452115/-1007.952000902635/444.95868142554104/221//
+        '[93-9lQqTM9K3PdHKfJqpY]:httpCall "Http Call (Journey)"':
+          data:
+            body: ""
+            code: ""
+            errorOnNon200: true
+            headers: ""
+            method: GET
+            prompt: ""
+            url: ""
+            useUrlInput: true
+          outgoingConnections:
+            - json->"Non ambiguation URL" -AY0ZkhThi8TSAKBF8gBH/json
+          visualData: 871.7493937992969/-81.74245256290669/282.64732406713574/228//
+        '[9hVsv2m1G4SzOGMgEasys]:code "URL for Arrival "':
+          data:
+            allowConsole: false
+            allowFetch: false
+            allowProcess: false
+            allowRequire: false
+            allowRivet: false
+            body: ""
+            code: >-
+              const data = inputs.json.value;
+
+
+              // get first match
+
+              const match = data.matches?.[0];
+
+
+              // handle no result
+
+              if (!match) {
+                return {
+                  output1: {
+                    type: "string",
+                    value: ""
+                  }
+                };
+              }
+
+
+              const stopPointId = match.id;
+
+
+              // build arrivals URL
+
+              return {
+                output1: {
+                  type: "string",
+                  value: `https://api.tfl.gov.uk/StopPoint/${stopPointId}/Arrivals`
+                }
+              };
+            headers: ""
+            inputNames:
+              - json
+            outputNames: output1
+          outgoingConnections:
+            - output1->"Http Call (Arrival)" LzgCa3kYjllqe7dSw2SGi/url
+          visualData: 1186.2276289826295/-493.24114921940554/356.66615807904645/203//
+        '[9jfwXjGGchbJBhFArT_qD]:userInput "User Input"':
+          data:
+            code: ""
+            prompt: "You can try:\r
+
+              • \"Status of Northern line\"\r
+
+              • \"Next train from Hendon Central\"\r
+
+              • \"Journey from Hendon to Oxford Circus\"`"
+            useInput: false
+          outgoingConnections:
+            - output->"Detect intent" B1OEPtF6DdXoB0WO2vLNv/input1
+          visualData: -1919.8500228558094/-166.70018842953044/280/212//
+        '[B1OEPtF6DdXoB0WO2vLNv]:code "Detect intent"':
+          data:
+            allowConsole: false
+            allowFetch: false
+            allowProcess: false
+            allowRequire: false
+            allowRivet: false
+            code: |-
+              const text = String(inputs.input1.value || "").toLowerCase();
+
+              // Detect intent
+              let intent = "unknown";
+
+              if (text.includes("status") || text.includes("delay")) {
+                intent = "line-status";
+              }
+              else if (text.includes("next") || text.includes("train")) {
+                intent = "arrivals";
+              }
+              else if (text.includes("from") && text.includes("to")) {
+                intent = "journey";
+              }
+
+              return {
+                intent: { type: "string", value: intent },
+                query: { type: "string", value: text }
+              };
+            inputNames:
+              - input1
+            outputNames:
+              - intent
+              - query
+          isConditional: false
+          outgoingConnections:
+            - intent->"Path Selection For API Calls" MGgW4vZlQfpYuj9zkbube/$if
+            - query->"Path Selection For API Calls" MGgW4vZlQfpYuj9zkbube/query
+          visualData: -1438.7282859642628/-156.484284381518/518.0403826522656/172//
+        '[LzgCa3kYjllqe7dSw2SGi]:httpCall "Http Call (Arrival)"':
+          data:
+            body: ""
+            code: ""
+            errorOnNon200: true
+            headers: ""
+            method: GET
+            url: ""
+            useUrlInput: true
+          outgoingConnections:
+            - json->"Arrival Response" 08-SZoCCps83l3h9fQSx3/json
+          visualData: 1715.7791966039342/-501.1223261903918/280/205//
+        '[MGgW4vZlQfpYuj9zkbube]:code "Path Selection For API Calls"':
+          data:
+            allowConsole: false
+            allowFetch: false
+            allowProcess: false
+            allowRequire: false
+            allowRivet: false
+            code: >-
+              const text = String(inputs.query?.value || "").toLowerCase();
+
+
+              let intent = "unknown";
+
+
+              if (text.includes("status") || text.includes("delay")) {
+                intent = "line_status";
+              }
+
+              else if (text.includes("next") || text.includes("train")) {
+                intent = "arrivals";
+              }
+
+              else if (text.includes("from") && text.includes("to")) {
+                intent = "journey";
+              }
+
+
+              return {
+                line_status: intent === "line_status" ? { type: "string", value: text } : undefined,
+                arrivals: intent === "arrivals" ? { type: "string", value: text } : undefined,
+                journey: intent === "journey" ? { type: "string", value: text } : undefined,
+                unknown: intent === "unknown" ? { type: "string", value: text } : undefined
+              };
+            inputNames:
+              - query
+            outputNames:
+              - line_status
+              - arrivals
+              - journey
+              - unknown
+            prompt: ""
+          isConditional: true
+          outgoingConnections:
+            - arrivals->"Arrival StopPoint ID URL" 8njTpBxHjXizMzLIhs3GI/arrivals
+            - journey->"Journey URL" SCsDH2v5gnjh0LRGCvkB0/journey
+            - line_status->"Tube Status API URL"
+              tBX3vjy3bKOno1Pux15qY/line_status
+            - unknown->"Fallback" MwGlNxpPzIm4NgFsv2hDM/unknown
+          visualData: -768.5957777199864/-27.68293644867282/634.2456932494788/234//
+        '[MwGlNxpPzIm4NgFsv2hDM]:code "Fallback"':
+          data:
+            allowConsole: false
+            allowFetch: false
+            allowProcess: false
+            allowRequire: false
+            allowRivet: false
+            code: |-
+              const text = String(inputs.unknown.value || "");
+
+              return {
+                output1: {
+                  type: "string",
+                  value: `I didn’t understand your request.
+
+              You can try:
+              • "Status of Northern line"
+              • "Next train from Hendon Central"
+              • "Journey from Victoria to Oxford Circus"
+                }
+              };
+            inputNames:
+              - unknown
+            outputNames: output1
+            prompt: ""
+          visualData: 135.91027123541357/205.09093142606002/432.5288912312915/224//
+        '[SCsDH2v5gnjh0LRGCvkB0]:code "Journey URL"':
+          data:
+            allowConsole: false
+            allowFetch: false
+            allowProcess: false
+            allowRequire: false
+            allowRivet: false
+            body: ""
+            code: >-
+              const text = String(inputs.journey.value || "").toLowerCase();
+
+
+              // extract
+
+              const fromMatch = text.match(/from (.*?) to/);
+
+              const toMatch = text.match(/to (.*)/);
+
+
+              let from = fromMatch ? fromMatch[1].trim() : "";
+
+              let to = toMatch ? toMatch[1].trim() : "";
+
+
+              // clean input
+
+              from = from.replace(/[^a-zA-Z0-9\s]/g, "");
+
+              to = to.replace(/[^a-zA-Z0-9\s]/g, "");
+
+
+              // build URL with tube mode
+
+              return {
+                output1: {
+                  type: "string",
+                  value: (from && to)
+                    ? `https://api.tfl.gov.uk/Journey/JourneyResults/${encodeURIComponent(from)}/to/${encodeURIComponent(to)}?mode=tube`
+                    : ""
+                }
+              };
+            inputNames:
+              - journey
+            outputNames: output1
+            prompt: ""
+          outgoingConnections:
+            - output1->"Http Call (Journey)" 93-9lQqTM9K3PdHKfJqpY/url
+          visualData: 134.1917038337831/-377.5668414343451/646.3820427249491/233//
+        '[_G-sqV6KfrEDN0oVBOQx7]:httpCall "Http Call StopPoint ID"':
+          data:
+            body: ""
+            code: ""
+            errorOnNon200: true
+            headers: ""
+            method: GET
+            url: ""
+            useUrlInput: true
+          outgoingConnections:
+            - json->"URL for Arrival " 9hVsv2m1G4SzOGMgEasys/json
+          visualData: 711.3363659140808/-928.4691862225711/280/216//
+        '[jUUdPEAn8d8eBdHC3FnMA]:httpCall "Http Call (Non ambiguation Journey)"':
+          data:
+            body: ""
+            code: ""
+            errorOnNon200: true
+            headers: ""
+            method: GET
+            prompt: ""
+            url: ""
+            useUrlInput: true
+          outgoingConnections:
+            - json->"journey Response" 45Ajmk7Z24ohfTjK62A_D/json
+          visualData: 1706.1505732217133/-27.851743242654408/280/210//
+        '[tBX3vjy3bKOno1Pux15qY]:code "Tube Status API URL"':
+          data:
+            allowConsole: false
+            allowFetch: false
+            allowProcess: false
+            allowRequire: false
+            allowRivet: false
+            body: ""
+            code: >-
+              const text = String(inputs.line_status.value || "").toLowerCase();
+
+
+              const lines = [
+                "bakerloo","central","circle","district",
+                "hammersmith-city","jubilee","metropolitan",
+                "northern","piccadilly","victoria","waterloo-city"
+              ];
+
+
+              const lineMap = {
+                "hammersmith and city": "hammersmith-city",
+                "waterloo and city": "waterloo-city"
+              };
+
+
+              let normalized = text.replace(/&/g, "and");
+
+
+              // check mapped names first
+
+              let found = Object.keys(lineMap).find(k => normalized.includes(k));
+
+
+              if (found) {
+                found = lineMap[found];
+              } else {
+                found = lines.find(l => normalized.includes(l));
+              }
+
+
+              return {
+                lineId: {
+                  type: "string",
+                  value: `https://api.tfl.gov.uk/Line/${found}/Status` || "all"
+                }
+              };
+            inputNames:
+              - line_status
+            outputNames:
+              - lineId
+          outgoingConnections:
+            - lineId->"Http Call (line Staus)" y3QEaGeirlK3C8xYUZyL2/url
+          visualData: 11.630868728707476/-1421.6612163440072/443.6393973842851/220//
+        '[uPtE0nLvuub9VqS9uCg2O]:code "Status Response"':
+          data:
+            allowConsole: false
+            allowFetch: false
+            allowProcess: false
+            allowRequire: false
+            allowRivet: false
+            body: ""
+            code: >-
+              const data = inputs.json.value;
+
+
+              // Handle empty / error case
+
+              if (!data || data.length === 0) {
+                return {
+                  output1: {
+                    type: "string",
+                    value: "No data found for this line."
+                  }
+                };
+              }
+
+
+              // Format response
+
+              const result = data.map(line => {
+                const name = line.name;
+                const status = line.lineStatuses?.[0]?.statusSeverityDescription || "Unknown";
+
+                return `${name}: ${status}`;
+              }).join("\n");
+
+
+              return {
+                output1: {
+                  type: "string",
+                  value: result
+                }
+              };
+            inputNames:
+              - json
+            outputNames: output1
+          visualData: 1272.4031718457456/-1329.0863297799208/362.78649406487057/227//
+        '[y3QEaGeirlK3C8xYUZyL2]:httpCall "Http Call (line Staus)"':
+          data:
+            body: ""
+            code: ""
+            errorOnNon200: true
+            headers: ""
+            method: GET
+            url: ""
+            useBodyInput: false
+            useMethodInput: false
+            useUrlInput: true
+          outgoingConnections:
+            - json->"Status Response" uPtE0nLvuub9VqS9uCg2O/json
+          visualData: 779.1094162992493/-1518.4698523336922/280/226//
+  metadata:
+    description: ""
+    id: LUXVt_176ekHOuxL9zQTn
+    mainGraphId: kwQq90leAScP5WN6B4mfP
+    title: tfl-chatbot
+  plugins: []
+  references: []
